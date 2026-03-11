@@ -11,6 +11,15 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // GET request için test response
+  if (req.method === 'GET') {
+    return res.status(200).json({ 
+      message: 'Shopify Webhook aktif!', 
+      status: 'ready',
+      timestamp: new Date().toISOString()
+    });
+  }
+
   // Sadece POST isteklerini kabul et
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
