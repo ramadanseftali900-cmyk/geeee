@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webhook Test</title>
+</head>
+<body>
+    <h1>Shopify Webhook Test</h1>
+    <button onclick="testWebhook()">Test Webhook</button>
+    <div id="result"></div>
+
+    <script>
+    function testWebhook() {
+        document.getElementById('result').innerHTML = 'Testing...';
+        
+        fetch('https://geeee-three.vercel.app/api/shopify-webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                siparis: {
+                    siparisNo: '#TEST-123',
+                    urunAdi: 'Test Ürün'
+                },
+                shopifyConfig: {
+                    store: '6jvvjt-71.myshopify.com',
+                    token: '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'
+                }
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        })
+        .catch(error => {
+            document.getElementById('result').innerHTML = 'Error: ' + error.message;
+        });
+    }
+    </script>
+</body>
+</html>

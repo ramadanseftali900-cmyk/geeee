@@ -39,15 +39,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // En minimal Shopify sipariş formatı
+    // En minimal Shopify sipariş formatı - Sadece zorunlu alanlar
     const shopifyOrder = {
       order: {
         line_items: [{
-          title: siparis.urunAdi || 'Web Sitesi Ürünü',
+          title: 'Test Ürün',
           quantity: 1,
           price: '1.00'
-        }],
-        financial_status: 'pending'
+        }]
       }
     };
 
