@@ -26,67 +26,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    console.log('📦 Webhook tetiklendi:', req.body);
+    console.log('📦 Webhook tetiklendi:', JSON.stringify(req.body, null, 2));
 
     const { siparis, shopifyConfig } = req.body;
 
     // Gerekli veriler var mı kontrol et
     if (!siparis || !shopifyConfig || !shopifyConfig.store || !shopifyConfig.token) {
+      console.log('❌ Eksik veri:', { siparis: !!siparis, shopifyConfig: !!shopifyConfig });
       return res.status(400).json({ 
-        error: 'Eksik veri: siparis ve shopifyConfig gerekli' 
+        error: 'Eksik veri: siparis ve shopifyConfig gerekli',
+        received: { siparis: !!siparis, shopifyConfig: !!shopifyConfig }
       });
     }
 
-    // Shopify sipariş formatına çevir
+    // En minimal Shopify sipariş formatı
     const shopifyOrder = {
       order: {
-        email: 'musteri@example.com',
-        fulfillment_status: null,
-        send_receipt: false,
-        send_fulfillment_receipt: false,
-        note: `Web sitesinden otomatik aktarılan sipariş - ${siparis.siparisNo}`,
-        tags: `web-sitesi, otomatik, forum-${siparis.forum}`,
-        customer: {
-          first_name: siparis.musteri.split(' ')[0] || siparis.musteri,
-          last_name: siparis.musteri.split(' ').slice(1).join(' ') || '',
-          email: 'musteri@example.com',
-          phone: siparis.telefon ? '+90' + siparis.telefon : ''
-        },
-        billing_address: {
-          first_name: siparis.musteri.split(' ')[0] || siparis.musteri,
-          last_name: siparis.musteri.split(' ').slice(1).join(' ') || '',
-          address1: siparis.adres || '',
-          city: siparis.il || '',
-          province: siparis.il || '',
-          country: 'Turkey',
-          zip: '00000',
-          phone: siparis.telefon ? '+90' + siparis.telefon : ''
-        },
-        shipping_address: {
-          first_name: siparis.musteri.split(' ')[0] || siparis.musteri,
-          last_name: siparis.musteri.split(' ').slice(1).join(' ') || '',
-          address1: siparis.adres || '',
-          city: siparis.il || '',
-          province: siparis.il || '',
-          country: 'Turkey',
-          zip: '00000',
-          phone: siparis.telefon ? '+90' + siparis.telefon : ''
-        },
         line_items: [{
-          title: siparis.urunAdi || 'Ürün',
-          quantity: parseInt(siparis.adet) || 1,
-          price: calculatePrice(siparis.tutar),
-          variant_title: siparis.adet || '1 Adet',
-          vendor: 'Web Sitesi',
-          product_exists: false,
-          fulfillment_service: 'manual'
+          title: siparis.urunAdi || 'Web Sitesi Ürünü',
+          quantity: 1,
+          price: '1.00'
         }],
-        financial_status: 'pending',
-        total_price: calculatePrice(siparis.tutar),
-        currency: 'USD',
-        payment_gateway_names: [siparis.odemeYontemi || 'Kapıda Ödeme']
+        financial_status: 'pending'
       }
     };
+
+    console.log('📤 Shopify\'a gönderiliyor:', JSON.stringify(shopifyOrder, null, 2));
 
     // Shopify API'ye gönder
     const apiUrl = `https://${shopifyConfig.store}/admin/api/2023-10/orders.json`;
@@ -100,24 +65,27 @@ export default async function handler(req, res) {
       body: JSON.stringify(shopifyOrder)
     });
 
+    const responseText = await response.text();
+    console.log('📥 Shopify yanıtı:', response.status, responseText);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Shopify API Error ${response.status}: ${errorText}`);
+      throw new Error(`Shopify API Error ${response.status}: ${responseText}`);
     }
 
-    const result = await response.json();
+    const result = JSON.parse(responseText);
     
-    console.log('✅ Shopify sipariş başarılı:', result.order.order_number);
+    console.log('✅ Shopify sipariş başarılı:', result.order?.order_number || result.order?.id);
 
     return res.status(200).json({
       success: true,
-      shopifyOrderId: result.order.id,
-      shopifyOrderNumber: result.order.order_number,
-      message: `Sipariş #${result.order.order_number} Shopify'a aktarıldı`
+      shopifyOrderId: result.order?.id,
+      shopifyOrderNumber: result.order?.order_number,
+      message: `Sipariş #${result.order?.order_number || result.order?.id} Shopify'a aktarıldı`
     });
 
   } catch (error) {
-    console.error('❌ Webhook hatası:', error);
+    console.error('❌ Webhook hatası:', error.message);
+    console.error('❌ Stack:', error.stack);
     
     return res.status(500).json({
       success: false,
